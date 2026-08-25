@@ -1,0 +1,113 @@
+name: wrapcheck
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.7-alpine
+    environment:
+      CLICKHOUSE_DB: wrapcheck
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-wrapcheck-local}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "8123:8123"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  clickhouse-mcp:
+    build:
+      context: ./mcp
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_VERIFY: "false"
+      CLICKHOUSE_DATABASE: wrapcheck
+      CLICKHOUSE_USER: wrapcheck_mcp
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_MCP_PASSWORD:-wrapcheck-mcp-local}
+      CLICKHOUSE_MCP_SERVER_TRANSPORT: http
+      CLICKHOUSE_MCP_BIND_HOST: 0.0.0.0
+      CLICKHOUSE_MCP_BIND_PORT: "8000"
+      CLICKHOUSE_MCP_AUTH_DISABLED: "true"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_MODE: ${APP_MODE:-demo}
+      CORS_ORIGINS: http://localhost:3000
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: wrapcheck
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-wrapcheck-local}
+      CLICKHOUSE_MCP_URL: http://clickhouse-mcp:8000/mcp
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-us-central1}
+      GOOGLE_GENAI_USE_VERTEXAI: "true"
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      CURATED_REFERENCE_GCS_URI: ${CURATED_REFERENCE_GCS_URI:-}
+      CURATED_CLEAN_GCS_URI: ${CURATED_CLEAN_GCS_URI:-}
+      CURATED_FLAWED_GCS_URI: ${CURATED_FLAWED_GCS_URI:-}
+      CURATED_MEDIA_BUCKET: ${CURATED_MEDIA_BUCKET:-}
+      DEMO_QUOTA_SECRET: ${DEMO_QUOTA_SECRET:-change-me-in-live-mode}
+      DEMO_RUNS_PER_10_MINUTES: ${DEMO_RUNS_PER_10_MINUTES:-3}
+      UPLOAD_DELIVERIES_PER_10_MINUTES: ${UPLOAD_DELIVERIES_PER_10_MINUTES:-3}
+      GLOBAL_RUNS_PER_10_MINUTES: ${GLOBAL_RUNS_PER_10_MINUTES:-100}
+      CLOUD_TASKS_QUEUE: ${CLOUD_TASKS_QUEUE:-}
+      CLOUD_TASKS_SERVICE_ACCOUNT: ${CLOUD_TASKS_SERVICE_ACCOUNT:-}
+      CLOUD_RUN_BACKEND_URL: ${CLOUD_RUN_BACKEND_URL:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      clickhouse-mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  clickhouse-data:

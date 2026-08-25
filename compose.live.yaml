@@ -1,0 +1,28 @@
+services:
+  backend:
+    environment:
+      APP_MODE: live
+      CLICKHOUSE_HOST: ${CLICKHOUSE_HOST:?Set the ClickHouse Cloud host}
+      CLICKHOUSE_PORT: ${CLICKHOUSE_PORT:-8443}
+      CLICKHOUSE_SECURE: "true"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-wrapcheck}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:?Set the ClickHouse user}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set the ClickHouse password}
+      CLICKHOUSE_MCP_URL: ${CLICKHOUSE_MCP_URL:?Set the private MCP endpoint}
+      DEMO_QUOTA_SECRET: ${DEMO_QUOTA_SECRET:?Set a random quota secret}
+      CURATED_MEDIA_BUCKET: ${CURATED_MEDIA_BUCKET:?Set the private GCS media bucket}
+      CLOUD_TASKS_QUEUE: ${CLOUD_TASKS_QUEUE:?Set the ingestion Cloud Tasks queue path}
+      CLOUD_TASKS_SERVICE_ACCOUNT: ${CLOUD_TASKS_SERVICE_ACCOUNT:?Set the Cloud Tasks caller service account}
+      CLOUD_RUN_BACKEND_URL: ${CLOUD_RUN_BACKEND_URL:?Set the private backend Cloud Run URL}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google_adc.json
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS_FILE:?Set an absolute ADC JSON path}:/run/secrets/google_adc.json:ro
+  clickhouse-mcp:
+    environment:
+      CLICKHOUSE_HOST: ${CLICKHOUSE_HOST:?Set the ClickHouse Cloud host}
+      CLICKHOUSE_PORT: ${CLICKHOUSE_PORT:-8443}
+      CLICKHOUSE_SECURE: "true"
+      CLICKHOUSE_VERIFY: "true"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-wrapcheck}
+      CLICKHOUSE_USER: ${CLICKHOUSE_MCP_USER:-wrapcheck_mcp}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_MCP_PASSWORD:?Set the read-only MCP password}

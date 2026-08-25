@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv*
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.log
+.DS_Store
+clickhouse-data/
