@@ -2,11 +2,27 @@
 
 > A production media-handoff release gate for DITs and assistant editors.
 
+[Launch the live application](https://wrapcheck-web-chcs5wu3qa-uc.a.run.app/) | [Security](SECURITY.md) | [MIT License](LICENSE)
+
+Built for the **Google Cloud Agentic Cinema Hackathon** in the **ClickHouse Partner Track**.
+
 WrapCheck answers one practical question before source cards are erased:
 
 **Did every camera and production-sound file reported on set reach two distinct backups with matching hashes?**
 
 It reconciles camera, sound, and script reports against a physical media manifest. Missing media, single-copy deliveries, and hash mismatches become exact recovery actions. A named DIT—not an AI model—makes the final immutable release decision.
+
+## What judges can test
+
+The hosted build is a production-backed hackathon MVP, not a static concept or prerecorded walkthrough. It includes:
+
+- A one-click problem delivery with exactly two blockers: missing `SR12_024B_T07.wav` and incomplete second-copy verification for card A017.
+- A recovered delivery with zero blockers and a mandatory named-human release.
+- Playable original camera footage and separate production-sound evidence.
+- Private direct-to-Cloud-Storage uploads for unpacked production deliveries.
+- Durable ClickHouse runs, findings, human decisions, releases, jobs, and telemetry.
+- Live Gemini-assisted document normalization and evidence retrieval through the official private, read-only ClickHouse MCP service.
+- Deterministic file, hash, and two-destination release rules that the model cannot override.
 
 ## Why it matters
 
@@ -28,6 +44,22 @@ The repository contains an original miniature film delivery rather than a walkth
 - Deterministic CSV reports with measured sizes and real SHA-256 hashes.
 - `problem-delivery.zip`: Take 7 sound is absent and A017's secondary video copy is pending.
 - `recovered-delivery.zip`: all six media files have matching verified hashes on two destinations.
+
+### Hosted one-click path
+
+1. Open the [live WrapCheck application](https://wrapcheck-web-chcs5wu3qa-uc.a.run.app/).
+2. Select **Load problem delivery** and wait for **Hold source cards**.
+3. Select **24B / Take 7** to play the camera evidence and show that its separate production WAV is missing.
+4. Review the missing-audio and incomplete-backup recovery actions.
+5. After the physical recovery steps are complete, record both findings as recovered.
+6. Enter the DIT’s name, release the delivery, and open the editorial handoff report.
+7. Select **Load recovered delivery** to confirm zero blockers with named human release still required.
+
+### Upload the sample through the production pipeline
+
+Select **Download sample delivery**, extract the ZIP, then choose all four reports and the MP4/MOV and WAV assets under **Use your own unpacked delivery**. The browser sends media directly to private Cloud Storage; the authenticated worker validates, hashes, persists, retrieves, and reconciles the delivery.
+
+### Run locally
 
 Start the complete local stack:
 
