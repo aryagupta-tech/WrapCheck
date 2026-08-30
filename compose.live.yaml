@@ -9,6 +9,7 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:?Set the ClickHouse user}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set the ClickHouse password}
       CLICKHOUSE_MCP_URL: ${CLICKHOUSE_MCP_URL:?Set the private MCP endpoint}
+      CLICKHOUSE_MCP_AUDIENCE: ${CLICKHOUSE_MCP_AUDIENCE:-}
       DEMO_QUOTA_SECRET: ${DEMO_QUOTA_SECRET:?Set a random quota secret}
       CURATED_MEDIA_BUCKET: ${CURATED_MEDIA_BUCKET:?Set the private GCS media bucket}
       CLOUD_TASKS_QUEUE: ${CLOUD_TASKS_QUEUE:?Set the ingestion Cloud Tasks queue path}

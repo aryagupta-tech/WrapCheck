@@ -15,10 +15,11 @@ class Settings(BaseSettings):
     clickhouse_connect_timeout: int = 3
     clickhouse_receive_timeout: int = 10
     clickhouse_mcp_url: str = "http://clickhouse-mcp:8000/mcp"
+    clickhouse_mcp_audience: str | None = None
     google_cloud_project: str | None = None
     google_cloud_location: str = "us-central1"
     google_genai_use_vertexai: bool = True
-    gemini_model: str = "gemini-3.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     curated_reference_gcs_uri: str | None = None
     curated_clean_gcs_uri: str | None = None
     curated_flawed_gcs_uri: str | None = None

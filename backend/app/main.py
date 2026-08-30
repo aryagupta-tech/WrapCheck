@@ -70,6 +70,11 @@ async def _build_live_handoff(payload: HandoffRunRequest) -> HandoffRun:
     mcp_ms = round((perf_counter() - started) * 1000)
     retrieved_expected = [ExpectedTake.model_validate(item) for item in context.get("expectations", [])]
     retrieved_media = [MediaFile.model_validate(item) for item in context.get("inventory", [])]
+    curated_playback = {item.filename: item.playback_url for item in media if item.playback_url}
+    for item in retrieved_media:
+        # MCP proves which inventory row exists; this only restores the private
+        # curated playback route that is intentionally not stored in ClickHouse.
+        item.playback_url = curated_playback.get(item.filename)
     if not retrieved_expected:
         raise HTTPException(status_code=503, detail="ClickHouse MCP returned no media expectations.")
     checks, findings = reconcile_media(run_id, retrieved_expected, retrieved_media)
@@ -229,18 +234,24 @@ async def _build_live_gate(request: DemoRunRequest) -> WrapRun:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:
-        ensure_delivery_schema(repository)
-        snapshot = build_demo_snapshot()
-        repository.seed_demo(PRODUCTION.model_dump(), snapshot.observations, snapshot.conflicts)
+        if settings.app_mode == "live":
+            # Production migrations are applied out of band by an administrator. The
+            # runtime identity intentionally has no CREATE or ALTER privileges.
+            repository.client.command("SELECT 1")
+        else:
+            ensure_delivery_schema(repository)
+            snapshot = build_demo_snapshot()
+            repository.seed_demo(PRODUCTION.model_dump(), snapshot.observations, snapshot.conflicts)
         database_state["seeded"] = True
         database_state["error"] = None
-        repository.store_agent_run(
-            PRODUCTION.production_id,
-            PRODUCTION.scene_id,
-            "demo",
-            "fixtures/no-model",
-            workflow_steps(persistence_ok=True),
-        )
+        if settings.app_mode != "live":
+            repository.store_agent_run(
+                PRODUCTION.production_id,
+                PRODUCTION.scene_id,
+                "demo",
+                "fixtures/no-model",
+                workflow_steps(persistence_ok=True),
+            )
     except Exception as exc:
         database_state["seeded"] = False
         database_state["error"] = str(exc)
@@ -521,6 +532,8 @@ def decide_handoff_finding(finding_id: str, payload: HandoffDecisionRequest):
     finding.decision = payload.decision
     finding.reviewer_note = payload.note
     refresh_handoff(run)
+    handoff_runs[run.run_id] = run
+    durable.cache_run(run)
     if run.mode == "live" or database_state["seeded"]:
         try:
             repository.store_handoff_decision(finding_id, payload.decision, payload.reviewer, payload.note)
@@ -540,6 +553,8 @@ def release_handoff(run_id: str, payload: HandoffReleaseRequest):
     run.released_by = payload.reviewer
     run.released_at = datetime.now(timezone.utc)
     refresh_handoff(run)
+    handoff_runs[run.run_id] = run
+    durable.cache_run(run)
     if run.mode == "live" or database_state["seeded"]:
         try:
             repository.store_handoff_release(run_id, payload.reviewer, payload.note)

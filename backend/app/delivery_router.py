@@ -10,7 +10,9 @@ from .delivery_models import (
     Delivery, DeliveryCreateRequest, DeliveryStatus, IngestionJob, IngestionRequest,
     JobStatus, UploadTargetsRequest, UploadTargetsResponse,
 )
-from .delivery_service import create_upload_target, process_ingestion, store_local_upload
+from .delivery_service import (
+    create_upload_target, generate_gcs_signed_url, process_ingestion, store_local_upload,
+)
 from .services.session import signed_session_hash
 
 
@@ -137,7 +139,9 @@ def create_delivery_router(settings, durable, repository) -> APIRouter:
             from google.cloud import storage
             bucket_name, object_name = asset.storage_uri[5:].split("/", 1)
             blob = storage.Client(project=settings.google_cloud_project).bucket(bucket_name).blob(object_name)
-            return RedirectResponse(blob.generate_signed_url(version="v4", expiration=timedelta(minutes=15), method="GET"))
+            return RedirectResponse(generate_gcs_signed_url(
+                blob, expiration=timedelta(minutes=15), method="GET",
+            ))
         path = Path(asset.storage_uri)
         if not path.is_file():
             raise HTTPException(status_code=404, detail="Stored asset no longer exists")

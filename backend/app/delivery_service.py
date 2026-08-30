@@ -6,13 +6,15 @@ import logging
 import subprocess
 import zipfile
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import google_crc32c
 from fastapi import HTTPException, Request
+from google.auth import default as google_auth_default
+from google.auth.transport.requests import Request as GoogleAuthRequest
 
 from .delivery_models import (
     AssetKind, Delivery, DeliveryAsset, DeliveryStatus, IngestionJob, JobStatus,
@@ -63,6 +65,25 @@ def validate_declaration(declaration: UploadAssetDeclaration) -> str:
     return filename
 
 
+def generate_gcs_signed_url(blob, *, method: str, expiration: int | timedelta, content_type: str | None = None) -> str:
+    """Sign a GCS URL from Cloud Run via IAM without storing a private key."""
+    credentials, _ = google_auth_default(
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    credentials.refresh(GoogleAuthRequest())
+    service_account_email = getattr(credentials, "service_account_email", "")
+    if not service_account_email or service_account_email == "default" or not credentials.token:
+        raise RuntimeError("Cloud Run signing credentials could not be resolved")
+    return blob.generate_signed_url(
+        version="v4",
+        expiration=expiration,
+        method=method,
+        content_type=content_type,
+        service_account_email=service_account_email,
+        access_token=credentials.token,
+    )
+
+
 def create_upload_target(settings, delivery: Delivery, declaration: UploadAssetDeclaration) -> UploadTarget:
     filename = validate_declaration(declaration)
     asset_id = str(uuid4())
@@ -71,8 +92,8 @@ def create_upload_target(settings, delivery: Delivery, declaration: UploadAssetD
         object_name = f"uploads/{delivery.delivery_id}/{asset_id}/{filename}"
         client = storage.Client(project=settings.google_cloud_project)
         blob = client.bucket(settings.curated_media_bucket).blob(object_name)
-        upload_url = blob.generate_signed_url(
-            version="v4",
+        upload_url = generate_gcs_signed_url(
+            blob,
             expiration=900,
             method="PUT",
             content_type=declaration.content_type,

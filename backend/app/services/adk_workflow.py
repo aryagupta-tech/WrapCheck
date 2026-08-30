@@ -14,7 +14,9 @@ class ContinuityAgent:
 
         async def retrieve_continuity_history_through_mcp(production_id: str, scene_id: str) -> dict:
             """Retrieve prior continuity observations for one production scene through mcp-clickhouse."""
-            self.last_mcp_trace = await MCPHistoryClient(settings.clickhouse_mcp_url).observations_for_scene(
+            self.last_mcp_trace = await MCPHistoryClient(
+                settings.clickhouse_mcp_url, settings.clickhouse_mcp_audience
+            ).observations_for_scene(
                 production_id, scene_id
             )
             return self.last_mcp_trace
@@ -58,7 +60,9 @@ class WrapGateAgent:
             reference_take_id: str, candidate_take_id: str, run_id: str,
         ) -> dict:
             """Retrieve declared requirements and both take observations through mcp-clickhouse."""
-            self.last_gate_context = await MCPHistoryClient(settings.clickhouse_mcp_url).gate_context(
+            self.last_gate_context = await MCPHistoryClient(
+                settings.clickhouse_mcp_url, settings.clickhouse_mcp_audience
+            ).gate_context(
                 production_id, scene_id, setup_id, reference_take_id, candidate_take_id, run_id,
             )
             return self.last_gate_context
@@ -107,7 +111,9 @@ class MediaHandoffAgent:
 
         async def retrieve_media_delivery_through_mcp(run_id: str) -> dict:
             """Retrieve expected takes and delivered media for a handoff run."""
-            self.last_context = await MCPHistoryClient(settings.clickhouse_mcp_url).handoff_context(run_id)
+            self.last_context = await MCPHistoryClient(
+                settings.clickhouse_mcp_url, settings.clickhouse_mcp_audience
+            ).handoff_context(run_id)
             return self.last_context
 
         self.agent = Agent(

@@ -106,13 +106,18 @@ class DurableStore:
 
     def save_run(self, run: HandoffRun) -> HandoffRun:
         updated_at = _now()
-        with self._lock:
-            self._runs[run.run_id] = run.model_copy(deep=True)
+        self.cache_run(run)
         self.client.insert(
             "handoff_run_snapshots",
             [[run.run_id, run.model_dump_json(), run.status.value, updated_at]],
             column_names=["run_id", "payload_json", "status", "updated_at"],
         )
+        return run
+
+    def cache_run(self, run: HandoffRun) -> HandoffRun:
+        """Refresh the process fallback without requiring a database write."""
+        with self._lock:
+            self._runs[run.run_id] = run.model_copy(deep=True)
         return run
 
     def get_run(self, run_id: str) -> HandoffRun | None:

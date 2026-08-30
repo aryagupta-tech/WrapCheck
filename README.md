@@ -129,7 +129,7 @@ Store live values in Secret Manager rather than committing them:
 APP_MODE=live
 GOOGLE_CLOUD_PROJECT=your-project
 GOOGLE_CLOUD_LOCATION=us-central1
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 CURATED_MEDIA_BUCKET=private-wrapcheck-media
 CLOUD_TASKS_QUEUE=wrapcheck-ingestion
 CLOUD_TASKS_SERVICE_ACCOUNT=wrapcheck-tasks@your-project.iam.gserviceaccount.com
@@ -141,6 +141,7 @@ CLICKHOUSE_DATABASE=wrapcheck
 CLICKHOUSE_USER=wrapcheck_app
 CLICKHOUSE_PASSWORD=secret
 CLICKHOUSE_MCP_URL=https://your-private-mcp-service/mcp
+CLICKHOUSE_MCP_AUDIENCE=https://your-private-mcp-service
 DEMO_QUOTA_SECRET=a-long-random-secret
 ```
 
